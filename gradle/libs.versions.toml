@@ -129,7 +129,7 @@ coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-
 org-json = { group = "org.json", name = "json", version = "20240303" }
 
 # FFT / Signal Processing
-jtransforms = { group = "com.github.wendykierp", name = "JTransforms", version = "3.1" }
+jtransforms = { group = "com.github.wendykierp", name = "JTransforms", version = "3.2" }
 
 # LiteRT — the TFLite runtime's current name (Task 14 — AUDIO-01 YAMNet audio classification).
 # org.tensorflow:tensorflow-lite is stuck at 2.16.1 on Maven Central and ships a
