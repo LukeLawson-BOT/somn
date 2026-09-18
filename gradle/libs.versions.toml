@@ -16,7 +16,7 @@ documentfile = "1.1.0"
 robolectric = "4.16.1"
 androidx-test-core = "1.6.1"
 truth = "1.4.4"
-coroutines-test = "1.9.0"
+coroutines-test = "1.11.0"
 
 [libraries]
 # Compose BOM
