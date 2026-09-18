@@ -15,7 +15,7 @@ zxingcpp = "3.1.1"
 documentfile = "1.1.0"
 robolectric = "4.16.1"
 androidx-test-core = "1.6.1"
-truth = "1.4.4"
+truth = "1.4.5"
 coroutines-test = "1.9.0"
 
 [libraries]
