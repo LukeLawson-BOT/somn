@@ -518,6 +518,7 @@ class SleepTrackingService : Service() {
             putExtra(AlarmReceiver.EXTRA_GRADUAL_SECONDS, alarm.gradualVolumeSeconds)
             putExtra(AlarmReceiver.EXTRA_CAPTCHA_TYPE,   alarm.captchaType.name)
             putExtra(AlarmReceiver.EXTRA_WAKE_WINDOW_MINUTES, alarm.wakeWindowMinutes)
+            putExtra(AlarmReceiver.EXTRA_SOUND_URI,      alarm.soundUri)
         }
         startForegroundService(si)
         // Smart-alarm wake: no ViewModel stop path follows, so flush the final epoch here

@@ -10,6 +10,7 @@ import android.content.pm.ServiceInfo
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import android.os.IBinder
 import android.os.VibrationEffect
@@ -63,6 +64,7 @@ class AlarmService : Service() {
     private var wakeConfirmAttempts = 0
     private var lastVibrationEnabled = true
     private var lastGradualSeconds = 60
+    private var lastSoundUri = ""
     private var currentAlarmId: Long = -1L
 
     /**
@@ -224,6 +226,7 @@ class AlarmService : Service() {
                 val gradualSeconds = intent?.getIntExtra(AlarmReceiver.EXTRA_GRADUAL_SECONDS, 60) ?: 60
                 val captchaType = intent?.getStringExtra(AlarmReceiver.EXTRA_CAPTCHA_TYPE) ?: "NONE"
                 val alarmId = intent?.getLongExtra(AlarmReceiver.EXTRA_ALARM_ID, -1L) ?: -1L
+                val soundUri = intent?.getStringExtra(AlarmReceiver.EXTRA_SOUND_URI) ?: ""
                 val wakeWindowMinutes = intent?.getIntExtra(
                     AlarmReceiver.EXTRA_WAKE_WINDOW_MINUTES, AlarmReceiver.NO_WAKE_WINDOW
                 ) ?: AlarmReceiver.NO_WAKE_WINDOW
@@ -257,8 +260,9 @@ class AlarmService : Service() {
                 wakeConfirmAttempts = 0
                 lastVibrationEnabled = vibrationEnabled
                 lastGradualSeconds = gradualSeconds
+                lastSoundUri = soundUri
 
-                startAlarm(vibrationEnabled, gradualSeconds)
+                startAlarm(vibrationEnabled, gradualSeconds, soundUri)
             }
         }
         return START_NOT_STICKY
@@ -286,7 +290,7 @@ class AlarmService : Service() {
         }
     }
 
-    private fun startAlarm(vibrationEnabled: Boolean, gradualSeconds: Int) {
+    private fun startAlarm(vibrationEnabled: Boolean, gradualSeconds: Int, soundUri: String = "") {
         serviceScope.launch {
             val profile = userProfileRepository.getProfile()
             val asdMode = profile?.neurodivergentProfile?.asdMode == true
@@ -299,23 +303,47 @@ class AlarmService : Service() {
                 // prepare()/start() block synchronously, run off Dispatchers.Main so a slow or
                 // stuck ringtone provider cannot ANR the exact moment the alarm is meant to fire.
                 soundStarted = withContext(Dispatchers.IO) {
-                    try {
-                        val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                    val defaultAlarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                        ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                    val targetUri = soundUri.takeIf { it.isNotBlank() }?.let {
+                        try {
+                            Uri.parse(it)
+                        } catch (e: Exception) {
+                            null
+                        }
+                    } ?: defaultAlarmUri
 
-                        mediaPlayer = MediaPlayer().apply {
+                    try {
+                        val player = MediaPlayer().apply {
                             setAudioAttributes(
                                 AudioAttributes.Builder()
                                     .setUsage(AudioAttributes.USAGE_ALARM)
                                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                                     .build()
                             )
-                            setDataSource(this@AlarmService, alarmUri)
+                            try {
+                                setDataSource(this@AlarmService, targetUri)
+                            } catch (e: Exception) {
+                                if (targetUri != defaultAlarmUri && defaultAlarmUri != null) {
+                                    android.util.Log.w("AlarmService", "Custom sound URI failed, falling back to default", e)
+                                    reset()
+                                    setAudioAttributes(
+                                        AudioAttributes.Builder()
+                                            .setUsage(AudioAttributes.USAGE_ALARM)
+                                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                                            .build()
+                                    )
+                                    setDataSource(this@AlarmService, defaultAlarmUri)
+                                } else {
+                                    throw e
+                                }
+                            }
                             isLooping = true
                             setVolume(0f, 0f)
                             prepare()
                             start()
                         }
+                        mediaPlayer = player
                         true
                     } catch (e: Exception) {
                         android.util.Log.e("AlarmService", "Alarm sound failed to start, falling back to vibration", e)
@@ -397,7 +425,7 @@ class AlarmService : Service() {
     private fun reRing() {
         _phase.value = AlarmPhase.FIRING
         _isAlarmFiring.value = true
-        startAlarm(lastVibrationEnabled, lastGradualSeconds)
+        startAlarm(lastVibrationEnabled, lastGradualSeconds, lastSoundUri)
     }
 
     private suspend fun performFullDismiss() {

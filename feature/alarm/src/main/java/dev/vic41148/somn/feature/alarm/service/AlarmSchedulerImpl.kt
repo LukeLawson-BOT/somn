@@ -65,7 +65,8 @@ class AlarmSchedulerImpl @Inject constructor(
             vibration = alarm.vibrationEnabled,
             gradualSeconds = alarm.gradualVolumeSeconds,
             captchaType = alarm.captchaType.name,
-            wakeWindowMinutes = alarm.wakeWindowMinutes
+            wakeWindowMinutes = alarm.wakeWindowMinutes,
+            soundUri = alarm.soundUri
         )
     }
 

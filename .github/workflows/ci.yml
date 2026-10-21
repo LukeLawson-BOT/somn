@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main, dev, 'feat/**', 'fix/**']
   pull_request:
     branches: [main, dev]
   workflow_dispatch:
@@ -158,6 +158,13 @@ jobs:
           name: lint-report
           path: '**/build/reports/lint-results-*.html'
           if-no-files-found: ignore
+
+      - name: Upload build APKs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: somn-apks
+          path: 'app/build/outputs/apk/**/*.apk'
+          if-no-files-found: warn
 
   privacy-guardrails:
     name: Privacy guardrails

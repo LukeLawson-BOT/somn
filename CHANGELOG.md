@@ -7,6 +7,8 @@ the tag — keep section headers unique and tag-containing (for example
 
 ## Somn v0.1.3 — brand refresh, crash export, pipeline hardening
 
+- **Alarm sound and ringtone selection.** Added system ringtone picker support (`RingtoneManager.ACTION_RINGTONE_PICKER`) to the alarm edit screen below existing alarm options, allowing users to customize alarm tones. Plumbed the selected sound URI end-to-end through `AlarmScheduler`, `AlarmReceiver`, `SleepTrackingService` (smart wake), and `AlarmService`, with automatic fallback to system default tones if custom sounds are unavailable.
+
 - **STE-copy fallout fixed.** The copy pass capitalized two cycle-coaching notes; the case-sensitive test assertions still expected lowercase. Tests now match the shipped copy.
 
 - **CI fixes.** JDK pin moved out of the repo `gradle.properties` into per-machine `~/.gradle` (the repo pin broke every GitHub-managed workflow), release attestations got their missing permission, Gitleaks got its token, and SDK-37-only deps are ignored by Dependabot until the bump. Scorecard runs on `main` only (it refuses other branches).

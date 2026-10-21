@@ -1,5 +1,13 @@
 package dev.vic41148.somn.feature.alarm.ui
 
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.media.RingtoneManager
+import android.net.Uri
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -12,6 +20,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -20,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -33,17 +45,38 @@ fun AlarmEditScreen(
     viewModel: AlarmViewModel = hiltViewModel()
 ) {
     val editingAlarm by viewModel.editingAlarm.collectAsState()
+    val context = LocalContext.current
     
     // UI state
     var label by rememberSaveable { mutableStateOf("") }
     var wakeWindow by rememberSaveable { mutableStateOf(30f) }
+    var soundUri by rememberSaveable { mutableStateOf("") }
     var isInitialized by remember { mutableStateOf(false) }
+
+    val soundTitle = remember(soundUri) {
+        getRingtoneTitle(context, soundUri)
+    }
+
+    val ringtonePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val pickedUri: Uri? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                result.data?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI, Uri::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                result.data?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+            }
+            soundUri = pickedUri?.toString() ?: ""
+        }
+    }
 
     LaunchedEffect(alarmId) {
         if (alarmId > 0) {
             viewModel.loadAlarmForEditing(alarmId)
         } else {
             viewModel.setEditingAlarm(null)
+            soundUri = ""
             isInitialized = true
         }
     }
@@ -86,6 +119,7 @@ fun AlarmEditScreen(
                 label = it.label
                 wakeWindow = it.wakeWindowMinutes.toFloat()
                 repeatDays = it.repeatDays
+                soundUri = it.soundUri
                 // The picker used to snapshot editingAlarm?.hour at first composition (null →
                 // 7:00) and never sync, so editing an alarm always opened showing 7:00 AM.
                 timePickerState.hour = it.hour
@@ -278,7 +312,66 @@ fun AlarmEditScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-                Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Alarm sound / ringtone customization
+            OutlinedCard(
+                onClick = {
+                    val currentUri = soundUri.takeIf { it.isNotBlank() }?.let {
+                        try { Uri.parse(it) } catch (e: Exception) { null }
+                    } ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+
+                    val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+                        putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
+                        putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "Select alarm sound")
+                        putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, currentUri)
+                        putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+                        putExtra(RingtoneManager.EXTRA_RINGTONE_DEFAULT_URI, RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM))
+                        putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+                    }
+                    ringtonePickerLauncher.launch(intent)
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Notifications,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Column {
+                            Text(
+                                text = "Alarm Sound",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = soundTitle,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
             }
 
             Row(
@@ -297,7 +390,8 @@ fun AlarmEditScreen(
                                     minute = timePickerState.minute,
                                     label = label,
                                     repeatDays = repeatDays,
-                                    wakeWindowMinutes = wakeWindow.toInt()
+                                    wakeWindowMinutes = wakeWindow.toInt(),
+                                    soundUri = soundUri
                                 )
                             )
                         } else {
@@ -306,7 +400,8 @@ fun AlarmEditScreen(
                                 minute = timePickerState.minute,
                                 label = label,
                                 repeatDays = repeatDays,
-                                wakeWindowMinutes = wakeWindow.toInt()
+                                wakeWindowMinutes = wakeWindow.toInt(),
+                                soundUri = soundUri
                             )
                         }
                         onSaved()
@@ -318,5 +413,18 @@ fun AlarmEditScreen(
             }
             }
         }
+    }
+}
+
+private fun getRingtoneTitle(context: Context, uriString: String): String {
+    if (uriString.isBlank()) {
+        return "Default alarm sound"
+    }
+    return try {
+        val uri = Uri.parse(uriString)
+        val ringtone = RingtoneManager.getRingtone(context, uri)
+        ringtone?.getTitle(context) ?: "Default alarm sound"
+    } catch (e: Exception) {
+        "Default alarm sound"
     }
 }
