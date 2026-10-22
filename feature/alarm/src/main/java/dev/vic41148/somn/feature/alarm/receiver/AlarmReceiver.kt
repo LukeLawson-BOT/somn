@@ -20,6 +20,7 @@ class AlarmReceiver : BroadcastReceiver() {
         const val EXTRA_GRADUAL_SECONDS = "gradual_seconds"
         const val EXTRA_CAPTCHA_TYPE = "captcha_type"
         const val EXTRA_WAKE_WINDOW_MINUTES = "wake_window_minutes"
+        const val EXTRA_SOUND_URI = "sound_uri"
 
         /** Sentinel returned when the intent carries no per-alarm wake window (legacy pending intents). */
         const val NO_WAKE_WINDOW = -1
@@ -32,7 +33,8 @@ class AlarmReceiver : BroadcastReceiver() {
             vibration: Boolean,
             gradualSeconds: Int,
             captchaType: String,
-            wakeWindowMinutes: Int
+            wakeWindowMinutes: Int,
+            soundUri: String = ""
         ) {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
@@ -43,6 +45,7 @@ class AlarmReceiver : BroadcastReceiver() {
                 putExtra(EXTRA_GRADUAL_SECONDS, gradualSeconds)
                 putExtra(EXTRA_CAPTCHA_TYPE, captchaType)
                 putExtra(EXTRA_WAKE_WINDOW_MINUTES, wakeWindowMinutes)
+                putExtra(EXTRA_SOUND_URI, soundUri)
             }
 
             val pendingIntent = PendingIntent.getBroadcast(
@@ -79,6 +82,7 @@ class AlarmReceiver : BroadcastReceiver() {
             putExtra(EXTRA_GRADUAL_SECONDS, intent.getIntExtra(EXTRA_GRADUAL_SECONDS, 60))
             putExtra(EXTRA_CAPTCHA_TYPE, intent.getStringExtra(EXTRA_CAPTCHA_TYPE))
             putExtra(EXTRA_WAKE_WINDOW_MINUTES, intent.getIntExtra(EXTRA_WAKE_WINDOW_MINUTES, NO_WAKE_WINDOW))
+            putExtra(EXTRA_SOUND_URI, intent.getStringExtra(EXTRA_SOUND_URI))
         }
         context.startForegroundService(serviceIntent)
     }

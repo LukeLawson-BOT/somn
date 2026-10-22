@@ -1,8 +1,6 @@
-name: CI
+name: PR checks
 
 on:
-  push:
-    branches: [main, dev]
   pull_request:
     branches: [main, dev]
   workflow_dispatch:
@@ -13,9 +11,9 @@ concurrency:
 
 jobs:
   build:
-    name: Build, test & lint
+    name: Smoke tests & debug APK
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -33,13 +31,14 @@ jobs:
       # machine picks the right JDK. That path does not exist on a runner, so every Gradle
       # invocation here overrides it with the JDK actions/setup-java just installed.
       - name: Assemble debug APK (standalone channel)
-        run: ./gradlew assembleStandaloneDebug -Dorg.gradle.java.home="$JAVA_HOME" --stacktrace
+        run: ./gradlew :app:assembleStandaloneDebug --build-cache -Dorg.gradle.java.home="$JAVA_HOME"
 
       # The core:notifications-vs-core:ui compileSdk split (35 vs 36) compiled fine in
       # debug and only exploded on a release assemble. Nothing else in CI builds the
       # minified standalone artifact, so that whole class of break hid until tag day.
       # Unsigned fallback is fine here — this proves compilation + R8, not signatures.
       - name: Assemble release APK (standalone channel, catches release-only breaks)
+        if: github.event_name == 'workflow_dispatch'
         run: ./gradlew :app:assembleStandaloneRelease -Dorg.gradle.java.home="$JAVA_HOME" --stacktrace
 
       # Runs BOTH the flavored-module suite (testStandaloneDebugUnitTest) and the non-flavored
@@ -56,6 +55,7 @@ jobs:
       # module's compile classpath resolves a different androidx.compose.foundation version than
       # :app ships, so the class of bug is caught in CI instead of by a user.
       - name: Compose foundation versions align (compile == shipped)
+        if: github.event_name == 'workflow_dispatch'
         run: ./gradlew verifyComposeFoundationAlignment -Dorg.gradle.java.home="$JAVA_HOME" --stacktrace
 
       # README.md (and CONTRIBUTING.md) advertise a unit-test count that drifts the moment
@@ -71,6 +71,7 @@ jobs:
       # double-counting a flavored module's src/test (present in BOTH trees), each module's
       # testDebugUnitTest results are only counted when that module produces no standalone tree.
       - name: README test count matches the suite
+        if: github.event_name == 'workflow_dispatch'
         run: |
           set -euo pipefail
           # || true keeps the assignment from aborting under -o pipefail when no XMLs exist.
@@ -111,12 +112,14 @@ jobs:
           exit "$FAIL"
 
       - name: Android Lint
+        if: github.event_name == 'workflow_dispatch'
         run: ./gradlew lintStandaloneDebug -Dorg.gradle.java.home="$JAVA_HOME" --stacktrace
 
       # Debug lint and release lint are different configs (minify/shrink flags change
       # what lint can see); release-only findings hid until now. Runs after the release
       # assemble above so the intermediates it inspects exist.
       - name: Android Lint (release)
+        if: github.event_name == 'workflow_dispatch'
         run: ./gradlew lintStandaloneRelease -Dorg.gradle.java.home="$JAVA_HOME" --stacktrace
 
       # The CycloneDX BOM lists every resolvable artifact including Gradle-plugin
@@ -125,6 +128,7 @@ jobs:
       # intersects the findings with the DEX content and fails only on CVEs in
       # shipped code. Pinned scanner version, same as the local pre-tag run.
       - name: CVE scan (fails only on CVEs in shipped DEX)
+        if: github.event_name == 'workflow_dispatch'
         run: |
           set -euo pipefail
           curl -sL --max-time 120 -o osv-scanner \
@@ -141,6 +145,7 @@ jobs:
       # for weeks unnoticed. Compiling the test APK needs no emulator — running it still
       # does, on a maintainer device before release.
       - name: Compile instrumented tests
+        if: github.event_name == 'workflow_dispatch'
         run: ./gradlew :core:data:assembleStandaloneDebugAndroidTest :core:audio:assembleStandaloneDebugAndroidTest -Dorg.gradle.java.home="$JAVA_HOME" --stacktrace
 
       - name: Upload test results
@@ -159,7 +164,15 @@ jobs:
           path: '**/build/reports/lint-results-*.html'
           if-no-files-found: ignore
 
+      - name: Upload build APKs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: somn-apks
+          path: 'app/build/outputs/apk/**/*.apk'
+          if-no-files-found: warn
+
   privacy-guardrails:
+    if: github.event_name == 'workflow_dispatch'
     name: Privacy guardrails
     runs-on: ubuntu-latest
     timeout-minutes: 45
