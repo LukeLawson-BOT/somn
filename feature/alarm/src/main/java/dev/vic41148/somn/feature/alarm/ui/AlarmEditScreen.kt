@@ -36,6 +36,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import dev.vic41148.somn.feature.alarm.AlarmViewModel
 
@@ -386,6 +387,18 @@ fun AlarmEditScreen(
             }
 
                 Spacer(modifier = Modifier.height(24.dp))
+            }
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .zIndex(1f),
+                color = MaterialTheme.colorScheme.background
+            ) {
+                TimeInput(
+                    state = timePickerState,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
             }
 
             Row(

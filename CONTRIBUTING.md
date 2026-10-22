@@ -193,6 +193,7 @@ again. The check names appear directly on the PR page.
 
 ## Code style & conventions
 
+- **Keep the changelog current.** When a change modifies application source, behavior, or user-facing content, add a concise entry to the current top section of `CHANGELOG.md` in the same commit. CI enforces this for source-touching commits.
 - **Kotlin + Jetpack Compose + Material 3.** Follow the style you see in the
   existing code.
 - **Clean architecture, multi-module.** Keep changes inside the existing module
