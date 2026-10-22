@@ -12,6 +12,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: write # softprops/action-gh-release needs this to create the release + upload assets
@@ -41,8 +42,8 @@ jobs:
       # runner, so every Gradle invocation overrides it with the JDK setup-java just installed.
       # assembleRelease without keystore.properties (which is gitignored and absent here) still
       # produces an unsigned APK — the sign step below does the actual signing.
-      - name: Build release APK
-        run: ./gradlew assembleRelease --no-daemon -Dorg.gradle.java.home="$JAVA_HOME" --stacktrace
+      - name: Build standalone release APK
+        run: ./gradlew :app:assembleStandaloneRelease --no-daemon --build-cache -Dorg.gradle.java.home="$JAVA_HOME"
 
       # Sign with apksigner directly instead of a third-party action (the widely used
       # r0adkll/sign-android-release@v1 is effectively unmaintained: the v1 tag dates to 2021,
