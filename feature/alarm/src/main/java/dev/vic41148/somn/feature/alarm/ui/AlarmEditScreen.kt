@@ -15,6 +15,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -29,6 +30,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -147,58 +149,70 @@ fun AlarmEditScreen(
                 enter = fadeIn(tween(300)) +
                     scaleIn(initialScale = 0.98f, animationSpec = tween(300))
             ) {
-        // The save button used to be the last child of an unscrollable Column. A Material3
-        // TimePicker dial alone is ~300dp, and with the day chips, label field and wake-window
-        // slider above it the button sat past the bottom of the screen on a normal phone, laid
-        // out, clipped, and completely unreachable, so an alarm could never actually be saved.
-        // The dial now sits FIXED above the scroll region with the button pinned below it: a
-        // verticalScroll parent used to steal the dial's circular drags (vertical components
-        // scroll the form instead of moving the needle), which froze the needle animation.
+        // Keep the save action reachable while the picker and alarm details scroll together.
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 24.dp)
-                .padding(top = 24.dp),
+                .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = if (alarmId > 0) "Edit Alarm" else "New Alarm",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Box(
-                modifier = Modifier.pointerInput(Unit) {
-                    awaitPointerEventScope {
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            when (event.type) {
-                                PointerEventType.Press -> activePointers += 1
-                                PointerEventType.Release ->
-                                    activePointers = (activePointers - 1).coerceAtLeast(0)
-                                PointerEventType.Move ->
-                                    if (activePointers > 0 && event.changes.none { it.pressed }) {
-                                        activePointers = 0
-                                    }
-                                else -> {}
-                            }
-                        }
-                    }
-                }
-            ) {
-                TimePicker(state = timePickerState)
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .verticalScroll(rememberScrollState()),
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .imePadding(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                Text(
+                    text = if (alarmId > 0) "Edit Alarm" else "New Alarm",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 24.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(360.dp)
+                        .pointerInput(Unit) {
+                            awaitPointerEventScope {
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    when (event.type) {
+                                        PointerEventType.Press -> activePointers += 1
+                                        PointerEventType.Release -> activePointers = (activePointers - 1).coerceAtLeast(0)
+                                        PointerEventType.Move -> if (activePointers > 0 && event.changes.none { it.pressed }) activePointers = 0
+                                        else -> {}
+                                    }
+                                }
+                            }
+                        }
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(300.dp)
+                            .align(Alignment.Center)
+                    ) {
+                        val accent = MaterialTheme.colorScheme.primary
+                        Canvas(modifier = Modifier.matchParentSize()) {
+                            val durationDegrees = wakeWindow * 6f
+                            val alarmDegrees = ((timePickerState.hour % 12) + timePickerState.minute / 60f) * 30f
+                            val arcStart = -90f + alarmDegrees - durationDegrees
+                            val inset = 10.dp.toPx()
+                            val arcSize = androidx.compose.ui.geometry.Size(size.width - 2 * inset, size.height - 2 * inset)
+                            drawArc(accent.copy(alpha = 0.10f), arcStart, durationDegrees, false,
+                                androidx.compose.ui.geometry.Offset(inset, inset), arcSize,
+                                style = androidx.compose.ui.graphics.drawscope.Stroke(16.dp.toPx(), cap = StrokeCap.Round))
+                            drawArc(accent.copy(alpha = 0.34f), arcStart, durationDegrees, false,
+                                androidx.compose.ui.geometry.Offset(inset, inset), arcSize,
+                                style = androidx.compose.ui.graphics.drawscope.Stroke(6.dp.toPx(), cap = StrokeCap.Round))
+                        }
+                    }
+                    TimePicker(state = timePickerState)
+                }
+                Spacer(modifier = Modifier.height(16.dp))
 
             // Repeat Days
             Text(
@@ -371,7 +385,7 @@ fun AlarmEditScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(24.dp))
             }
 
             Row(
