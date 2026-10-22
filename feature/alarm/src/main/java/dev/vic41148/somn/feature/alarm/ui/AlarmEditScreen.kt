@@ -17,7 +17,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
@@ -446,48 +445,10 @@ fun AlarmEditScreen(
                         .zIndex(1f),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .pointerInput(timePickerState) {
-                                var dragAccumulator = 0f
-                                var scrubHour = true
-                                val dragPixelsPerStep = 12f
-                                detectVerticalDragGestures(
-                                    onVerticalDrag = { change, dragAmount ->
-                                        change.consume()
-                                        dragAccumulator -= dragAmount
-                                        while (dragAccumulator >= dragPixelsPerStep) {
-                                            if (scrubHour) {
-                                                timePickerState.hour = (timePickerState.hour + 1) % 24
-                                            } else {
-                                                timePickerState.minute = (timePickerState.minute + 1) % 60
-                                            }
-                                            dragAccumulator -= dragPixelsPerStep
-                                        }
-                                        while (dragAccumulator <= -dragPixelsPerStep) {
-                                            if (scrubHour) {
-                                                timePickerState.hour = (timePickerState.hour + 23) % 24
-                                            } else {
-                                                timePickerState.minute = (timePickerState.minute + 59) % 60
-                                            }
-                                            dragAccumulator += dragPixelsPerStep
-                                        }
-                                    },
-                                    onDragStart = { offset ->
-                                        dragAccumulator = 0f
-                                        scrubHour = offset.x < size.width / 2f
-                                    },
-                                    onDragEnd = { dragAccumulator = 0f },
-                                    onDragCancel = { dragAccumulator = 0f }
-                                )
-                            }
-                    ) {
-                        TimeInput(
-                            state = timePickerState,
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
-                    }
+                    TimeInput(
+                        state = timePickerState,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
                 }
             }
 
