@@ -15,12 +15,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -32,17 +30,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.focus.FocusState
-import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.hilt.navigation.compose.hiltViewModel
-import kotlinx.coroutines.launch
 import dev.vic41148.somn.feature.alarm.AlarmViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,8 +55,6 @@ fun AlarmEditScreen(
     var wakeWindow by rememberSaveable { mutableStateOf(30f) }
     var soundUri by rememberSaveable { mutableStateOf("") }
     var isInitialized by remember { mutableStateOf(false) }
-    val labelBringIntoViewRequester = remember { BringIntoViewRequester() }
-    val coroutineScope = rememberCoroutineScope()
 
     val soundTitle = remember(soundUri) {
         getRingtoneTitle(context, soundUri)
@@ -157,36 +150,27 @@ fun AlarmEditScreen(
                 enter = fadeIn(tween(300)) +
                     scaleIn(initialScale = 0.98f, animationSpec = tween(300))
             ) {
-        // Keep the save action reachable, but let the dial and all alarm details share one
-        // scroll surface. The numeric time selector is duplicated as a sticky header so the
-        // dial can disappear underneath it while the selected time remains visible.
+        // Keep the save action reachable while the picker and alarm details scroll together.
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(
+            Column(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .imePadding(),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(top = 72.dp)
-                        .imePadding(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-
                 Text(
                     text = if (alarmId > 0) "Edit Alarm" else "New Alarm",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(top = 24.dp)
                 )
-
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Box(
@@ -194,66 +178,41 @@ fun AlarmEditScreen(
                         .fillMaxWidth()
                         .height(360.dp)
                         .pointerInput(Unit) {
-                        awaitPointerEventScope {
-                            while (true) {
-                                val event = awaitPointerEvent()
-                                when (event.type) {
-                                    PointerEventType.Press -> activePointers += 1
-                                    PointerEventType.Release ->
-                                        activePointers = (activePointers - 1).coerceAtLeast(0)
-                                    PointerEventType.Move ->
-                                        if (activePointers > 0 && event.changes.none { it.pressed }) {
-                                            activePointers = 0
-                                        }
-                                    else -> {}
+                            awaitPointerEventScope {
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    when (event.type) {
+                                        PointerEventType.Press -> activePointers += 1
+                                        PointerEventType.Release -> activePointers = (activePointers - 1).coerceAtLeast(0)
+                                        PointerEventType.Move -> if (activePointers > 0 && event.changes.none { it.pressed }) activePointers = 0
+                                        else -> {}
+                                    }
                                 }
                             }
                         }
-                    }
                 ) {
-                    // The arc is deliberately behind the Material3 picker so it remains a
-                    // visual cue and does not compete with the picker's time-drag gesture.
-                    val accent = MaterialTheme.colorScheme.primary
-                    Canvas(modifier = Modifier.matchParentSize()) {
-                        val durationDegrees = wakeWindow * 6f
-                        val alarmDegrees =
-                            ((timePickerState.hour % 12) + timePickerState.minute / 60f) * 30f
-                        val arcStart = -90f + alarmDegrees - durationDegrees
-                        val arcSize = size.minDimension
-                        val arcBounds = androidx.compose.ui.geometry.Rect(
-                            left = (size.width - arcSize) / 2f + 10.dp.toPx(),
-                            top = (size.height - arcSize) / 2f + 10.dp.toPx(),
-                            right = (size.width + arcSize) / 2f - 10.dp.toPx(),
-                            bottom = (size.height + arcSize) / 2f - 10.dp.toPx()
-                        )
-                        drawArc(
-                            color = accent.copy(alpha = 0.10f),
-                            startAngle = arcStart,
-                            sweepAngle = durationDegrees,
-                            useCenter = false,
-                            topLeft = arcBounds.topLeft,
-                            size = arcBounds.size,
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(
-                                width = 16.dp.toPx(),
-                                cap = StrokeCap.Round
-                            )
-                        )
-                        drawArc(
-                            color = accent.copy(alpha = 0.34f),
-                            startAngle = arcStart,
-                            sweepAngle = durationDegrees,
-                            useCenter = false,
-                            topLeft = arcBounds.topLeft,
-                            size = arcBounds.size,
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(
-                                width = 6.dp.toPx(),
-                                cap = StrokeCap.Round
-                            )
-                        )
+                    Box(
+                        modifier = Modifier
+                            .size(300.dp)
+                            .align(Alignment.Center)
+                    ) {
+                        val accent = MaterialTheme.colorScheme.primary
+                        Canvas(modifier = Modifier.matchParentSize()) {
+                            val durationDegrees = wakeWindow * 6f
+                            val alarmDegrees = ((timePickerState.hour % 12) + timePickerState.minute / 60f) * 30f
+                            val arcStart = -90f + alarmDegrees - durationDegrees
+                            val inset = 10.dp.toPx()
+                            val arcSize = androidx.compose.ui.geometry.Size(size.width - 2 * inset, size.height - 2 * inset)
+                            drawArc(accent.copy(alpha = 0.10f), arcStart, durationDegrees, false,
+                                androidx.compose.ui.geometry.Offset(inset, inset), arcSize,
+                                style = androidx.compose.ui.graphics.drawscope.Stroke(16.dp.toPx(), cap = StrokeCap.Round))
+                            drawArc(accent.copy(alpha = 0.34f), arcStart, durationDegrees, false,
+                                androidx.compose.ui.geometry.Offset(inset, inset), arcSize,
+                                style = androidx.compose.ui.graphics.drawscope.Stroke(6.dp.toPx(), cap = StrokeCap.Round))
+                        }
                     }
                     TimePicker(state = timePickerState)
                 }
-
                 Spacer(modifier = Modifier.height(16.dp))
 
             // Repeat Days
@@ -280,7 +239,7 @@ fun AlarmEditScreen(
                     java.util.Calendar.SATURDAY to "S",
                     java.util.Calendar.SUNDAY to "S"
                 )
-                days.forEach { (calendarDay, initial) ->
+                for ((calendarDay, initial) in days) {
                     val isSelected = repeatDays.contains(calendarDay)
                     val container by animateColorAsState(
                         targetValue = if (isSelected)
@@ -339,16 +298,7 @@ fun AlarmEditScreen(
             OutlinedTextField(
                 value = label,
                 onValueChange = { label = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .bringIntoViewRequester(labelBringIntoViewRequester)
-                    .onFocusEvent { focusState: FocusState ->
-                        if (focusState.isFocused) {
-                            coroutineScope.launch {
-                                labelBringIntoViewRequester.bringIntoView()
-                            }
-                        }
-                    },
+                modifier = Modifier.fillMaxWidth(),
                 label = { Text("Label (optional)") },
                 singleLine = true
             )
@@ -436,26 +386,26 @@ fun AlarmEditScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
-                }
+                Spacer(modifier = Modifier.height(24.dp))
+            }
 
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .zIndex(1f),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    TimeInput(
-                        state = timePickerState,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                }
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .zIndex(1f),
+                color = MaterialTheme.colorScheme.background
+            ) {
+                TimeInput(
+                    state = timePickerState,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
             }
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 16.dp),
+                    .padding(vertical = 16.dp)
+                    .navigationBarsPadding(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Button(

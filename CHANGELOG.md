@@ -7,8 +7,9 @@ the tag — keep section headers unique and tag-containing (for example
 
 ## Somn v0.1.3 — brand refresh, crash export, pipeline hardening
 
-- **Alarm time entry.** Removed vertical drag scrubbing from the digital time input; standard hour and minute entry is restored.
+- **Alarm editor layout.** Removed the cramped fixed clock layout, centered the wake-window ring on the dial, and made the full form scroll cleanly above the pinned save action.
 
+- **Alarm time entry.** Removed vertical drag scrubbing from the digital time input; standard hour and minute entry is restored.
 - **Alarm sound and ringtone selection.** Added system ringtone picker support (`RingtoneManager.ACTION_RINGTONE_PICKER`) to the alarm edit screen below existing alarm options, allowing users to customize alarm tones. Plumbed the selected sound URI end-to-end through `AlarmScheduler`, `AlarmReceiver`, `SleepTrackingService` (smart wake), and `AlarmService`, with automatic fallback to system default tones if custom sounds are unavailable.
 
 - **STE-copy fallout fixed.** The copy pass capitalized two cycle-coaching notes; the case-sensitive test assertions still expected lowercase. Tests now match the shipped copy.
