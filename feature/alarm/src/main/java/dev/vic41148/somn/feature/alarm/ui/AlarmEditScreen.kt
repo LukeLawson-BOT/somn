@@ -214,6 +214,7 @@ fun AlarmEditScreen(
                 ) {
                     // The arc is deliberately behind the Material3 picker so it remains a
                     // visual cue and does not compete with the picker's time-drag gesture.
+                    val accent = MaterialTheme.colorScheme.primary
                     Canvas(modifier = Modifier.matchParentSize()) {
                         val durationDegrees = wakeWindow * 6f
                         val alarmDegrees =
@@ -226,7 +227,6 @@ fun AlarmEditScreen(
                             right = (size.width + arcSize) / 2f - 10.dp.toPx(),
                             bottom = (size.height + arcSize) / 2f - 10.dp.toPx()
                         )
-                        val accent = MaterialTheme.colorScheme.primary
                         drawArc(
                             color = accent.copy(alpha = 0.10f),
                             startAngle = arcStart,
