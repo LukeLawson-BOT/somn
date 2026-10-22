@@ -224,7 +224,7 @@ fun AlarmEditScreen(
                     java.util.Calendar.SATURDAY to "S",
                     java.util.Calendar.SUNDAY to "S"
                 )
-                days.forEach { (calendarDay, initial) ->
+                for ((calendarDay, initial) in days) {
                     val isSelected = repeatDays.contains(calendarDay)
                     val container by animateColorAsState(
                         targetValue = if (isSelected)
